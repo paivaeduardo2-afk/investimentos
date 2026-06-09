@@ -1,0 +1,6 @@
+{
+  "name": "B3 Invest - Carteira & IRPF",
+  "description": "Controle de ações, proventos (dividendos e JCP) e declaração anual de Imposto de Renda com importação assistida por IA de extratos da B3.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
