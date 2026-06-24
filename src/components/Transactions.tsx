@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { formatCurrency, formatDate, COMPANIES_DATABASE } from '../utils';
-import { Plus, Trash2, Import, ClipboardPaste, Wand2, Sparkles, Loader2, Info } from 'lucide-react';
+import { Plus, Trash2, Import, ClipboardPaste, Wand2, Sparkles, Loader2, Info, Pencil } from 'lucide-react';
 
 interface TransactionsProps {
   transactions: Transaction[];
   onAddTransaction: (tx: Transaction) => void;
   onAddMultipleTransactions: (txs: Transaction[]) => void;
+  onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onClearAll: () => void;
 }
@@ -15,6 +16,7 @@ export default function Transactions({
   transactions,
   onAddTransaction,
   onAddMultipleTransactions,
+  onEditTransaction,
   onDeleteTransaction,
   onClearAll
 }: TransactionsProps) {
@@ -33,6 +35,55 @@ export default function Transactions({
   const [isProcessing, setIsProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<Transaction[] | null>(null);
   const [aiError, setAiError] = useState('');
+
+  // Edit Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editId, setEditId] = useState('');
+  const [editTicker, setEditTicker] = useState('');
+  const [editType, setEditType] = useState<TransactionType>('COMPRA');
+  const [editDate, setEditDate] = useState('');
+  const [editQuantity, setEditQuantity] = useState<number | ''>('');
+  const [editPrice, setEditPrice] = useState<number | ''>('');
+  const [editCharges, setEditCharges] = useState<number | ''>('0');
+
+  const handleStartEdit = (tx: Transaction) => {
+    setEditId(tx.id);
+    setEditTicker(tx.ticker);
+    setEditType(tx.type);
+    setEditDate(tx.date);
+    setEditQuantity(tx.quantity);
+    setEditPrice(tx.price);
+    setEditCharges(tx.charges);
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTicker || !editQuantity || !editPrice) return;
+
+    const tk = editTicker.toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+    const qty = Number(editQuantity);
+    const prc = Number(editPrice);
+    const chg = Number(editCharges) || 0;
+
+    const total = editType === 'COMPRA' 
+      ? (qty * prc) + chg 
+      : (qty * prc) - chg;
+
+    const updatedTx: Transaction = {
+      id: editId,
+      ticker: tk,
+      type: editType,
+      date: editDate,
+      quantity: qty,
+      price: prc,
+      charges: chg,
+      total: Number(total.toFixed(2))
+    };
+
+    onEditTransaction(updatedTx);
+    setShowEditModal(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,13 +344,22 @@ export default function Transactions({
                         <td className="py-3 px-4 text-right font-mono text-slate-400">{formatCurrency(tx.charges)}</td>
                         <td className="py-3 px-4 text-right font-mono text-slate-900 font-bold">{formatCurrency(tx.total)}</td>
                         <td className="py-3 px-4">
-                          <button
-                            onClick={() => onDeleteTransaction(tx.id)}
-                            className="p-1 text-slate-300 hover:text-rose-500 hover:bg-slate-50 rounded-lg duration-100 transition-all cursor-pointer"
-                            title="Remover movimentação"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleStartEdit(tx)}
+                              className="p-1 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg duration-100 transition-all cursor-pointer"
+                              title="Editar movimentação"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => onDeleteTransaction(tx.id)}
+                              className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg duration-100 transition-all cursor-pointer"
+                              title="Remover movimentação"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -484,6 +544,131 @@ export default function Transactions({
                 Excluir Tudo
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {showEditModal && (
+        <div id="edit-tx-modal-overlay" className="fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-4">
+          <div id="edit-tx-modal" className="bg-white rounded-xl max-w-md w-full border border-slate-100 p-6 space-y-4 shadow-xl">
+            <div className="flex items-center gap-3 text-slate-900 border-b border-slate-100 pb-3">
+              <div className="p-2 bg-slate-50 rounded-lg">
+                <Pencil size={18} className="text-slate-700" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Editar Operação</h3>
+                <p className="text-[10px] text-slate-400">Modifique os dados da transação registrada</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4 text-xs font-medium text-slate-600">
+              <div>
+                <label className="block mb-1 font-semibold">CÓDIGO DO ATIVO (B3)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: PETR4, VALE3"
+                  value={editTicker}
+                  onChange={(e) => setEditTicker(e.target.value)}
+                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-indigo-500 font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 font-semibold">TIPO</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as TransactionType)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold focus:outline-indigo-500"
+                  >
+                    <option value="COMPRA">COMPRA (C)</option>
+                    <option value="VENDA">VENDA (V)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1 font-semibold">DATA OPERAÇÃO</label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono focus:outline-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block mb-1 font-semibold">QTD</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+                    required
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-indigo-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-semibold">PREÇO UNIT.</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="R$"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                    required
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-indigo-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-semibold">TAXAS B3</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="R$"
+                    value={editCharges}
+                    onChange={(e) => setEditCharges(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-indigo-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-lg flex items-center justify-between text-xs border border-slate-100">
+                <span className="text-slate-500 font-medium">Financeiro Estimado (Total):</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">
+                  {formatCurrency(
+                    Number(
+                      (
+                        (Number(editQuantity) || 0) * (Number(editPrice) || 0) +
+                        (editType === 'COMPRA' ? (Number(editCharges) || 0) : -(Number(editCharges) || 0))
+                      ).toFixed(2)
+                    )
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-50">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg font-semibold hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

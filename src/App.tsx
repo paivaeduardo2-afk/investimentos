@@ -83,6 +83,11 @@ export default function App() {
     saveTransactionsToStorage(updated);
   };
 
+  const handleEditTransaction = (updatedTx: Transaction) => {
+    const updated = transactions.map(tx => tx.id === updatedTx.id ? updatedTx : tx);
+    saveTransactionsToStorage(updated);
+  };
+
   const handleDeleteTransaction = (id: string) => {
     const filtered = transactions.filter(tx => tx.id !== id);
     saveTransactionsToStorage(filtered);
@@ -284,6 +289,7 @@ export default function App() {
                   transactions={transactions}
                   onAddTransaction={handleAddTransaction}
                   onAddMultipleTransactions={handleAddMultipleTransactions}
+                  onEditTransaction={handleEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}
                   onClearAll={handleClearAll}
                 />
