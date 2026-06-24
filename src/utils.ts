@@ -61,6 +61,36 @@ export const COMPANIES_DATABASE: Record<string, CompanyMetadata> = {
     companyName: 'ISHARES IBOVESPA ACÕES FDO DE INDICE',
     sector: 'ETFs',
     currentPrice: 124.50,
+  },
+  ABEV3: {
+    cnpj: '07.526.557/0001-00',
+    companyName: 'AMBEV S.A.',
+    sector: 'Consumo Não Cíclico / Bebidas',
+    currentPrice: 11.80,
+  },
+  ITSA4: {
+    cnpj: '17.211.841/0001-54',
+    companyName: 'ITAÚSA S.A.',
+    sector: 'Intermediários Financeiros / Holdings',
+    currentPrice: 10.10,
+  },
+  B3SA3: {
+    cnpj: '09.346.601/0001-25',
+    companyName: 'B3 S.A. - BRASIL, BOLSA, BALCÃO',
+    sector: 'Intermediários Financeiros / Outros',
+    currentPrice: 10.90,
+  },
+  XPML11: {
+    cnpj: '28.757.895/0001-62',
+    companyName: 'XP MALLS FDO INV IMOB - FII',
+    sector: 'Fundo de Investimento Imobiliário',
+    currentPrice: 111.50,
+  },
+  HGLG11: {
+    cnpj: '12.003.543/0001-38',
+    companyName: 'CGG LOGÍSTICA FDO INV IMOB - FII',
+    sector: 'Fundo de Investimento Imobiliário',
+    currentPrice: 161.20,
   }
 };
 

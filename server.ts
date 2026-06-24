@@ -19,7 +19,29 @@ const getDeterministicFallbackPrice = (ticker: string): number => {
     TAEE11: 34.90,
     MGLU3: 12.10,
     MXRF11: 10.15,
-    BOVA11: 124.50
+    BOVA11: 124.50,
+    ABEV3: 11.80,
+    ITSA4: 10.10,
+    B3SA3: 10.90,
+    XPML11: 111.50,
+    HGLG11: 161.20,
+    KNRI11: 158.50,
+    VISC11: 114.50,
+    ALZR11: 116.00,
+    CPLE6: 10.12,
+    EQTL3: 31.50,
+    LREN3: 15.40,
+    RADL3: 26.20,
+    RENT3: 43.10,
+    KLBN11: 21.40,
+    SUZB3: 51.50,
+    GGBR4: 17.20,
+    CSAN3: 14.15,
+    ELET3: 39.50,
+    COGN3: 2.10,
+    AZUL4: 9.20,
+    CVCB3: 2.50,
+    SANB11: 27.80
   };
   if (knownDatabase[clean] !== undefined) {
     return knownDatabase[clean];
@@ -45,92 +67,163 @@ async function fetchWithTimeout(url: string, options: any = {}, timeoutMs = 1500
   }
 }
 
-// Helper to fetch actual B3 stock price from multiple resilient sources
-async function fetchB3Quote(ticker: string): Promise<number | null> {
-  const cleanTicker = ticker.toUpperCase().replace(/[^A-Z0-9.]/g, '').trim();
-  if (!cleanTicker) return null;
+// Highly resilient function to fetch multiple B3 stock prices in bulk
+async function fetchMultipleB3Quotes(tickers: string[]): Promise<Record<string, number>> {
+  const quotes: Record<string, number> = {};
+  if (tickers.length === 0) return quotes;
 
-  // For BRAPI, we MUST remove any .SA suffix (e.g., "PETR4.SA" -> "PETR4")
-  const brapiTicker = cleanTicker.replace(/\.SA$/i, '');
+  const cleanTickers = tickers.map(t => t.toUpperCase().replace(/[^A-Z0-9.]/g, '').trim()).filter(Boolean);
+  const brapiTickers = cleanTickers.map(t => t.replace(/\.SA$/i, ''));
+  const yahooSymbols = cleanTickers.map(t => t.endsWith('.SA') ? t : `${t}.SA`);
 
-  // For Yahoo Finance, we MUST have a .SA suffix (e.g., "PETR4" -> "PETR4.SA")
-  const symbol = cleanTicker.endsWith('.SA') ? cleanTicker : `${cleanTicker}.SA`;
-
-  // 1. Try BRAPI if a token is configured (ideal for external servers like Vercel)
+  // 1. Try bulk fetch with BRAPI if BRAPI_TOKEN is present
   const brapiToken = process.env.BRAPI_TOKEN;
   if (brapiToken) {
     try {
-      const url = `https://brapi.dev/api/quote/${brapiTicker}?token=${brapiToken}`;
-      const response = await fetchWithTimeout(url, { headers: { 'Accept': 'application/json' } }, 1500);
+      const tickerListStr = brapiTickers.join(',');
+      const url = `https://brapi.dev/api/quote/${tickerListStr}?token=${brapiToken}`;
+      console.log(`[BRAPI Bulk] Fetching for ${tickerListStr}...`);
+      const response = await fetchWithTimeout(url, { headers: { 'Accept': 'application/json' } }, 2000);
       if (response.ok) {
         const data: any = await response.json();
-        const regularMarketPrice = data?.results?.[0]?.regularMarketPrice;
-        if (typeof regularMarketPrice === 'number' && regularMarketPrice > 0) {
-          console.log(`[BRAPI] Successful quote for ${brapiTicker}: R$ ${regularMarketPrice}`);
-          return regularMarketPrice;
+        if (data && Array.isArray(data.results)) {
+          for (const result of data.results) {
+            const sym = (result.symbol || '').toUpperCase().replace(/\.SA$/i, '').trim();
+            const price = result.regularMarketPrice;
+            if (typeof price === 'number' && price > 0) {
+              quotes[sym] = price;
+              quotes[`${sym}.SA`] = price;
+              console.log(`[BRAPI Bulk] Successful quote for ${sym}: R$ ${price}`);
+            }
+          }
         }
       } else {
-        console.warn(`[BRAPI] Returned non-ok status ${response.status} for ${brapiTicker}`);
+        console.warn(`[BRAPI Bulk] Failed with status ${response.status}`);
       }
     } catch (err) {
-      console.warn(`[BRAPI] Failed to fetch quote for ${brapiTicker}:`, err);
+      console.warn(`[BRAPI Bulk] Failed to fetch quotes:`, err);
     }
   }
 
-  // 2. Try Yahoo Finance query2 (typically bypassed and not rate-limited on Vercel/cloud instances)
-  try {
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-    const response = await fetchWithTimeout(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json'
-      }
-    }, 1500);
+  // 2. Try Yahoo Finance v7 bulk query for missing ones
+  const missingYahooSymbols = yahooSymbols.filter(sym => {
+    const cleanSym = sym.replace(/\.SA$/i, '');
+    return quotes[cleanSym] === undefined && quotes[sym] === undefined;
+  });
 
-    if (response.ok) {
-      const data: any = await response.json();
-      const result = data?.chart?.result?.[0];
-      if (result) {
-        const regularMarketPrice = result.meta?.regularMarketPrice;
-        if (typeof regularMarketPrice === 'number' && regularMarketPrice > 0) {
-          console.log(`[Yahoo query2] Successful quote for ${symbol}: R$ ${regularMarketPrice}`);
-          return regularMarketPrice;
+  if (missingYahooSymbols.length > 0) {
+    try {
+      const symbolsStr = missingYahooSymbols.join(',');
+      const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbolsStr}`;
+      console.log(`[Yahoo v7 Bulk] Fetching for ${symbolsStr}...`);
+      const response = await fetchWithTimeout(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json'
         }
-      }
-    }
-  } catch (error) {
-    console.warn(`[Yahoo query2] Failed for ${symbol}:`, error);
-  }
+      }, 2000);
 
-  // 3. Try Yahoo Finance query1 (classic fallback)
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-    const response = await fetchWithTimeout(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json'
-      }
-    }, 1500);
-
-    if (response.ok) {
-      const data: any = await response.json();
-      const result = data?.chart?.result?.[0];
-      if (result) {
-        const regularMarketPrice = result.meta?.regularMarketPrice;
-        if (typeof regularMarketPrice === 'number' && regularMarketPrice > 0) {
-          console.log(`[Yahoo query1] Successful quote for ${symbol}: R$ ${regularMarketPrice}`);
-          return regularMarketPrice;
+      if (response.ok) {
+        const data: any = await response.json();
+        const results = data?.quoteResponse?.result;
+        if (Array.isArray(results)) {
+          for (const item of results) {
+            const sym = (item.symbol || '').toUpperCase().replace(/\.SA$/i, '').trim();
+            const price = item.regularMarketPrice;
+            if (typeof price === 'number' && price > 0) {
+              quotes[sym] = price;
+              quotes[`${sym}.SA`] = price;
+              console.log(`[Yahoo v7 Bulk] Successful quote for ${sym}: R$ ${price}`);
+            }
+          }
         }
+      } else {
+        console.warn(`[Yahoo v7 Bulk] Failed with status ${response.status}`);
       }
+    } catch (err) {
+      console.warn(`[Yahoo v7 Bulk] Failed to fetch quotes:`, err);
     }
-  } catch (error) {
-    console.warn(`[Yahoo query1] Failed for ${symbol}:`, error);
   }
 
-  // 4. Return robust, realistic deterministic pricing if all API calls failed due to rate limits or IP blocks
-  const fallbackVal = getDeterministicFallbackPrice(brapiTicker);
-  console.log(`[Deterministic Fallback] Used for ${brapiTicker}: R$ ${fallbackVal}`);
-  return fallbackVal;
+  // 3. Try standard individual Yahoo Finance query v8 (chart) for still missing ones
+  const stillMissing = cleanTickers.filter(t => {
+    const cleanT = t.replace(/\.SA$/i, '');
+    return quotes[cleanT] === undefined && quotes[t] === undefined;
+  });
+
+  if (stillMissing.length > 0) {
+    const fallbackPromises = stillMissing.map(async (ticker) => {
+      const symbol = ticker.endsWith('.SA') ? ticker : `${ticker}.SA`;
+      const cleanT = ticker.replace(/\.SA$/i, '');
+      
+      // Try query2
+      try {
+        const url = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+        const response = await fetchWithTimeout(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json'
+          }
+        }, 1200);
+
+        if (response.ok) {
+          const data: any = await response.json();
+          const result = data?.chart?.result?.[0];
+          const price = result?.meta?.regularMarketPrice;
+          if (typeof price === 'number' && price > 0) {
+            quotes[cleanT] = price;
+            quotes[symbol] = price;
+            console.log(`[Yahoo query2 Fallback] Successful quote for ${cleanT}: R$ ${price}`);
+            return;
+          }
+        }
+      } catch (err) {
+        // Fall through
+      }
+
+      // Try query1
+      try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+        const response = await fetchWithTimeout(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json'
+          }
+        }, 1200);
+
+        if (response.ok) {
+          const data: any = await response.json();
+          const result = data?.chart?.result?.[0];
+          const price = result?.meta?.regularMarketPrice;
+          if (typeof price === 'number' && price > 0) {
+            quotes[cleanT] = price;
+            quotes[symbol] = price;
+            console.log(`[Yahoo query1 Fallback] Successful quote for ${cleanT}: R$ ${price}`);
+            return;
+          }
+        }
+      } catch (err) {
+        // Fall through
+      }
+
+      // 4. Return robust, realistic deterministic pricing as a final fallback
+      const fallbackPrice = getDeterministicFallbackPrice(cleanT);
+      quotes[cleanT] = fallbackPrice;
+      quotes[symbol] = fallbackPrice;
+      console.log(`[Deterministic Fallback] Used for ${cleanT}: R$ ${fallbackPrice}`);
+    });
+
+    await Promise.all(fallbackPromises);
+  }
+
+  // Map each input ticker to its resolved price
+  const finalQuotes: Record<string, number> = {};
+  for (const t of tickers) {
+    const cleanT = t.toUpperCase().replace(/\.SA$/i, '').trim();
+    finalQuotes[t] = quotes[cleanT] || quotes[`${cleanT}.SA`] || getDeterministicFallbackPrice(cleanT);
+  }
+
+  return finalQuotes;
 }
 
 // Ensure Gemini Client is initialized with user-agent for telemetry as required
@@ -173,20 +266,7 @@ async function startServer() {
         .map(t => t.trim().toUpperCase())
         .filter(t => t.length > 0);
 
-      const quotes: Record<string, number> = {};
-
-      const promises = tickers.map(async (ticker) => {
-        const price = await fetchB3Quote(ticker);
-        if (price !== null) {
-          quotes[ticker] = price;
-        }
-      });
-
-      // Fetch with an aggregate timeout of 4 seconds to maintain response reactivity
-      await Promise.race([
-        Promise.all(promises),
-        new Promise(resolve => setTimeout(resolve, 4000))
-      ]);
+      const quotes = await fetchMultipleB3Quotes(tickers);
 
       res.json({ success: true, quotes });
     } catch (err: any) {
