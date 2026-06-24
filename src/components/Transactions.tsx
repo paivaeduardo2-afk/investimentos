@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { formatCurrency, formatDate, COMPANIES_DATABASE } from '../utils';
 import { Plus, Trash2, Import, ClipboardPaste, Wand2, Sparkles, Loader2, Info, Pencil } from 'lucide-react';
@@ -10,6 +10,8 @@ interface TransactionsProps {
   onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onClearAll: () => void;
+  prefilledTx?: { ticker: string; type: TransactionType; price: number } | null;
+  onClearPrefilled?: () => void;
 }
 
 export default function Transactions({
@@ -18,7 +20,9 @@ export default function Transactions({
   onAddMultipleTransactions,
   onEditTransaction,
   onDeleteTransaction,
-  onClearAll
+  onClearAll,
+  prefilledTx,
+  onClearPrefilled
 }: TransactionsProps) {
   // Local state for single transaction form
   const [ticker, setTicker] = useState('');
@@ -27,6 +31,18 @@ export default function Transactions({
   const [quantity, setQuantity] = useState<number | ''>('');
   const [price, setPrice] = useState<number | ''>('');
   const [charges, setCharges] = useState<number | ''>('0');
+
+  // Trigger when parent supplies prefilled values
+  useEffect(() => {
+    if (prefilledTx) {
+      setTicker(prefilledTx.ticker);
+      setType(prefilledTx.type);
+      setPrice(prefilledTx.price);
+      if (onClearPrefilled) {
+        onClearPrefilled();
+      }
+    }
+  }, [prefilledTx, onClearPrefilled]);
 
   // AI Import Wizard State
   const [showImporter, setShowImporter] = useState(false);

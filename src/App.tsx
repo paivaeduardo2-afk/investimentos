@@ -10,6 +10,7 @@ import Transactions from './components/Transactions';
 import Proventos from './components/Proventos';
 import ImpostoDeRenda from './components/ImpostoDeRenda';
 import B3Assistant from './components/B3Assistant';
+import StockList from './components/StockList';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Briefcase, 
@@ -20,16 +21,20 @@ import {
   LayoutDashboard, 
   CheckCircle2, 
   Info,
-  Layers
+  Layers,
+  Search
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'proventos' | 'irpf' | 'ai'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'transactions' | 'proventos' | 'irpf' | 'ai' | 'stocks'>('dashboard');
   
   // Real Local state initialized from LocalStorage or Fallback seed data
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [proventos, setProventos] = useState<Provento[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  
+  // State for prefilling a purchase from B3 stock list
+  const [prefilledTx, setPrefilledTx] = useState<{ ticker: string; type: 'COMPRA' | 'VENDA'; price: number } | null>(null);
 
   // Initialize data on component mount
   useEffect(() => {
@@ -96,6 +101,11 @@ export default function App() {
   const handleClearAll = () => {
     saveTransactionsToStorage([]);
     saveProventosToStorage([]);
+  };
+
+  const handlePrefillPurchase = (ticker: string, price: number) => {
+    setPrefilledTx({ ticker, type: 'COMPRA', price });
+    setActiveTab('transactions');
   };
 
   const handleAddProvento = (newProv: Provento) => {
@@ -225,6 +235,18 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setActiveTab('stocks')}
+            className={`px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 duration-100 shrink-0 cursor-pointer ${
+              activeTab === 'stocks'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <Search size={14} />
+            Lista de Ações B3
+          </button>
+
+          <button
             onClick={() => setActiveTab('proventos')}
             className={`px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 duration-100 shrink-0 cursor-pointer ${
               activeTab === 'proventos'
@@ -292,6 +314,14 @@ export default function App() {
                   onEditTransaction={handleEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}
                   onClearAll={handleClearAll}
+                  prefilledTx={prefilledTx}
+                  onClearPrefilled={() => setPrefilledTx(null)}
+                />
+              )}
+              {activeTab === 'stocks' && (
+                <StockList 
+                  onAddAsPurchase={handlePrefillPurchase}
+                  livePrices={livePrices}
                 />
               )}
               {activeTab === 'proventos' && (

@@ -91,6 +91,108 @@ export const COMPANIES_DATABASE: Record<string, CompanyMetadata> = {
     companyName: 'CGG LOGÍSTICA FDO INV IMOB - FII',
     sector: 'Fundo de Investimento Imobiliário',
     currentPrice: 161.20,
+  },
+  KNRI11: {
+    cnpj: '12.003.543/0001-38',
+    companyName: 'KINEA RENDIMENTOS IMOBILIÁRIOS - FII',
+    sector: 'Fundo de Investimento Imobiliário',
+    currentPrice: 158.50,
+  },
+  VISC11: {
+    cnpj: '28.757.895/0001-62',
+    companyName: 'VINCI SHOPPING CENTERS FDO INV IMOB - FII',
+    sector: 'Fundo de Investimento Imobiliário',
+    currentPrice: 114.50,
+  },
+  ALZR11: {
+    cnpj: '28.757.895/0001-62',
+    companyName: 'ALIANZA TRUST RENDA IMOBILIÁRIA - FII',
+    sector: 'Fundo de Investimento Imobiliário',
+    currentPrice: 116.00,
+  },
+  CPLE6: {
+    cnpj: '76.483.817/0001-20',
+    companyName: 'COMPANHIA PARANAENSE DE ENERGIA - COPEL',
+    sector: 'Utilidade Pública / Energia Elétrica',
+    currentPrice: 10.12,
+  },
+  EQTL3: {
+    cnpj: '03.220.622/0001-85',
+    companyName: 'EQUATORIAL ENERGIA S.A.',
+    sector: 'Utilidade Pública / Energia Elétrica',
+    currentPrice: 31.50,
+  },
+  LREN3: {
+    cnpj: '92.754.738/0001-61',
+    companyName: 'LOJAS RENNER S.A.',
+    sector: 'Consumo Cíclico / Tecidos, Vestuário e Calçados',
+    currentPrice: 15.40,
+  },
+  RADL3: {
+    cnpj: '61.585.865/0001-51',
+    companyName: 'RAIADROGASIL S.A.',
+    sector: 'Saúde / Comércio e Distribuição',
+    currentPrice: 26.20,
+  },
+  RENT3: {
+    cnpj: '16.592.068/0001-97',
+    companyName: 'LOCALIZA RENT A CAR S.A.',
+    sector: 'Consumo Cíclico / Aluguel de Carros',
+    currentPrice: 43.10,
+  },
+  KLBN11: {
+    cnpj: '89.637.490/0001-45',
+    companyName: 'KLABIN S.A.',
+    sector: 'Materiais Básicos / Papel e Celulose',
+    currentPrice: 21.40,
+  },
+  SUZB3: {
+    cnpj: '16.404.287/0001-55',
+    companyName: 'SUZANO S.A.',
+    sector: 'Materiais Básicos / Papel e Celulose',
+    currentPrice: 51.50,
+  },
+  GGBR4: {
+    cnpj: '33.611.500/0001-19',
+    companyName: 'GERDAU S.A.',
+    sector: 'Materiais Básicos / Siderurgia',
+    currentPrice: 17.20,
+  },
+  CSAN3: {
+    cnpj: '50.746.577/0001-15',
+    companyName: 'COSAN S.A.',
+    sector: 'Petróleo, Gás e Biocombustíveis',
+    currentPrice: 14.15,
+  },
+  ELET3: {
+    cnpj: '00.001.180/0001-26',
+    companyName: 'CENTRAIS ELÉTRICAS BRASILEIRAS S.A. - ELETROBRAS',
+    sector: 'Utilidade Pública / Energia Elétrica',
+    currentPrice: 39.50,
+  },
+  COGN3: {
+    cnpj: '02.815.300/0001-93',
+    companyName: 'COGNA EDUCAÇÃO S.A.',
+    sector: 'Consumo Cíclico / Serviços Educacionais',
+    currentPrice: 2.10,
+  },
+  AZUL4: {
+    cnpj: '09.296.295/0001-60',
+    companyName: 'AZUL S.A.',
+    sector: 'Bens Industriais / Transporte Aéreo',
+    currentPrice: 9.20,
+  },
+  CVCB3: {
+    cnpj: '10.760.260/0001-19',
+    companyName: 'CVC BRASIL OPERADORA E AGÊNCIA DE VIAGENS S.A.',
+    sector: 'Consumo Cíclico / Viagens e Lazer',
+    currentPrice: 2.50,
+  },
+  SANB11: {
+    cnpj: '90.400.888/0001-42',
+    companyName: 'BANCO SANTANDER (BRASIL) S.A.',
+    sector: 'Intermediários Financeiros / Bancos',
+    currentPrice: 27.80,
   }
 };
 
