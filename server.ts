@@ -28,42 +28,64 @@ const getDeterministicFallbackPrice = (ticker: string): number => {
   return 20 + (simpleHash % 80);
 };
 
+// Helper to fetch with a timeout
+async function fetchWithTimeout(url: string, options: any = {}, timeoutMs = 1500): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
 // Helper to fetch actual B3 stock price from multiple resilient sources
 async function fetchB3Quote(ticker: string): Promise<number | null> {
   const cleanTicker = ticker.toUpperCase().replace(/[^A-Z0-9.]/g, '').trim();
   if (!cleanTicker) return null;
 
+  // For BRAPI, we MUST remove any .SA suffix (e.g., "PETR4.SA" -> "PETR4")
+  const brapiTicker = cleanTicker.replace(/\.SA$/i, '');
+
+  // For Yahoo Finance, we MUST have a .SA suffix (e.g., "PETR4" -> "PETR4.SA")
+  const symbol = cleanTicker.endsWith('.SA') ? cleanTicker : `${cleanTicker}.SA`;
+
   // 1. Try BRAPI if a token is configured (ideal for external servers like Vercel)
   const brapiToken = process.env.BRAPI_TOKEN;
   if (brapiToken) {
     try {
-      const url = `https://brapi.dev/api/quote/${cleanTicker}?token=${brapiToken}`;
-      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const url = `https://brapi.dev/api/quote/${brapiTicker}?token=${brapiToken}`;
+      const response = await fetchWithTimeout(url, { headers: { 'Accept': 'application/json' } }, 1500);
       if (response.ok) {
         const data: any = await response.json();
         const regularMarketPrice = data?.results?.[0]?.regularMarketPrice;
         if (typeof regularMarketPrice === 'number' && regularMarketPrice > 0) {
-          console.log(`[BRAPI] Successful quote for ${cleanTicker}: R$ ${regularMarketPrice}`);
+          console.log(`[BRAPI] Successful quote for ${brapiTicker}: R$ ${regularMarketPrice}`);
           return regularMarketPrice;
         }
+      } else {
+        console.warn(`[BRAPI] Returned non-ok status ${response.status} for ${brapiTicker}`);
       }
     } catch (err) {
-      console.warn(`[BRAPI] Failed to fetch quote for ${cleanTicker}:`, err);
+      console.warn(`[BRAPI] Failed to fetch quote for ${brapiTicker}:`, err);
     }
   }
-
-  // Symbol suffix for Yahoo Finance
-  const symbol = cleanTicker.endsWith('.SA') ? cleanTicker : `${cleanTicker}.SA`;
 
   // 2. Try Yahoo Finance query2 (typically bypassed and not rate-limited on Vercel/cloud instances)
   try {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json'
       }
-    });
+    }, 1500);
 
     if (response.ok) {
       const data: any = await response.json();
@@ -83,12 +105,12 @@ async function fetchB3Quote(ticker: string): Promise<number | null> {
   // 3. Try Yahoo Finance query1 (classic fallback)
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json'
       }
-    });
+    }, 1500);
 
     if (response.ok) {
       const data: any = await response.json();
@@ -106,8 +128,8 @@ async function fetchB3Quote(ticker: string): Promise<number | null> {
   }
 
   // 4. Return robust, realistic deterministic pricing if all API calls failed due to rate limits or IP blocks
-  const fallbackVal = getDeterministicFallbackPrice(cleanTicker);
-  console.log(`[Deterministic Fallback] Used for ${cleanTicker}: R$ ${fallbackVal}`);
+  const fallbackVal = getDeterministicFallbackPrice(brapiTicker);
+  console.log(`[Deterministic Fallback] Used for ${brapiTicker}: R$ ${fallbackVal}`);
   return fallbackVal;
 }
 
