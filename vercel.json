@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/b3/quotes",
+      "destination": "/api/b3/quotes.ts"
+    },
+    {
+      "source": "/api/b3/parse",
+      "destination": "/api/b3/parse.ts"
+    },
+    {
+      "source": "/api/b3/chat",
+      "destination": "/api/b3/chat.ts"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
